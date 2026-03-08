@@ -1,0 +1,10 @@
+@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+@openzeppelin/contracts@5.0.2/=lib/openzeppelin-contracts/contracts/
+@openzeppelin/contracts@4.8.3/=lib/openzeppelin-contracts/contracts/
+@chainlink/contracts-ccip/src/v0.8/ccip/=node_modules/@chainlink/contracts-ccip/contracts/
+@chainlink/contracts-ccip/contracts/=node_modules/@chainlink/contracts-ccip/contracts/
+@chainlink/contracts-ccip/=node_modules/@chainlink/contracts-ccip/
+@chainlink/contracts/=node_modules/@chainlink/contracts/
+@chainlink/local/=node_modules/@chainlink/local/
+forge-std/=lib/forge-std/src/
+@prb/math/=lib/prb-math/src/

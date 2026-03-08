@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@chainlink/contracts-ccip": "^1.5.0",
+    "@chainlink/local": "^0.2.7-beta"
+  }
+}
