@@ -70,12 +70,12 @@ A multi-agent system built with **LangGraph** that provides deep analysis of pre
 
 | File Path | Chainlink Technology | Integration Purpose |
 | :--- | :--- | :--- |
-| `contracts/src/BorrowerSpoke.sol` | **CCIP** | Encodes and sends cross-chain `LoanRequest` messages and receives `LoanDisbursement`. |
-| `contracts/src/HubReceiver.sol` | **CCIP** | Inherits `CCIPReceiver` to process incoming loan requests and liquidity transfers. |
-| `contracts/src/LenderSpoke.sol` | **CCIP** | Transfers stablecoin liquidity from side-chains to the central `OmnichainLiquidityPool` on the Hub. |
-| `workflows/src/valuation.ts` | **CRE / DON** | Uses `EVMClient` for log triggers, `HTTPClient` for AI Swarm queries, and `ConsensusAggregation` for result validation. |
-| `workflows/src/health-monitor.ts` | **CRE / DON** | Periodically scans `BorrowerSpoke` state to identify unhealthy vaults using automated triggers. |
-| `workflows/src/liquidator.ts` | **CRE / DON** | Generates and submits on-chain transactions to trigger liquidations via the `DutchAuction`. |
-| `workflows/src/event-resolution.ts` | **CRE / DON** | Resolves prediction market outcomes and settles collateral positions cross-chain. |
-| `workflows/secrets.yaml` | **Secrets Management** | Maps local environment variables to logical secret names for secure HMAC authentication. |
-| `contracts/src/TokenPool.sol` | **CCIP** | Custom CCIP Token Pool logic for handling protocol-specific token transfers. |
+| `https://github.com/Gam-Finance/contracts/blob/main/src/BorrowerSpoke.sol` | **CCIP** | Encodes and sends cross-chain `LoanRequest` messages and receives `LoanDisbursement`. |
+| `https://github.com/Gam-Finance/contracts/blob/main/src/HubReceiver.sol` | **CCIP** | Inherits `CCIPReceiver` to process incoming loan requests and liquidity transfers. |
+| `https://github.com/Gam-Finance/contracts/blob/main/src/LenderSpoke.sol` | **CCIP** | Transfers stablecoin liquidity from side-chains to the central `OmnichainLiquidityPool` on the Hub. |
+| `https://github.com/Gam-Finance/gam-fi-cre-workflows/blob/main/src/valuation.ts` | **CRE / DON** | Uses `EVMClient` for log triggers, `HTTPClient` for AI Swarm queries, and `ConsensusAggregation` for result validation. |
+| `https://github.com/Gam-Finance/gam-fi-cre-workflows/blob/main/src/health-monitor.ts` | **CRE / DON** | Periodically scans `BorrowerSpoke` state to identify unhealthy vaults using automated triggers. |
+| `https://github.com/Gam-Finance/gam-fi-cre-workflows/blob/main/src/liquidator.ts` | **CRE / DON** | Generates and submits on-chain transactions to trigger liquidations via the `DutchAuction`. |
+| `https://github.com/Gam-Finance/gam-fi-cre-workflows/blob/main/src/event-resolution.ts` | **CRE / DON** | Resolves prediction market outcomes and settles collateral positions cross-chain. |
+| `https://github.com/Gam-Finance/gam-fi-cre-workflows/blob/main/secrets.yaml` | **Secrets Management** | Maps local environment variables to logical secret names for secure HMAC authentication. |
+| `https://github.com/Gam-Finance/contracts/blob/main/contracts/src/TokenPool.sol` | **CCIP** | Custom CCIP Token Pool logic for handling protocol-specific token transfers. |
