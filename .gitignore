@@ -4,3 +4,4 @@ lib
 .DS_Store
 .env.local
 .env.test
+PROTOCOL_TECHNICAL_BREAKDOWN.md
