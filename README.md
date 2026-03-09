@@ -70,12 +70,137 @@ A multi-agent system built with **LangGraph** that provides deep analysis of pre
 
 | File Path | Chainlink Technology | Integration Purpose |
 | :--- | :--- | :--- |
-| `https://github.com/Gam-Finance/contracts/blob/main/src/BorrowerSpoke.sol` | **CCIP** | Encodes and sends cross-chain `LoanRequest` messages and receives `LoanDisbursement`. |
-| `https://github.com/Gam-Finance/contracts/blob/main/src/HubReceiver.sol` | **CCIP** | Inherits `CCIPReceiver` to process incoming loan requests and liquidity transfers. |
-| `https://github.com/Gam-Finance/contracts/blob/main/src/LenderSpoke.sol` | **CCIP** | Transfers stablecoin liquidity from side-chains to the central `OmnichainLiquidityPool` on the Hub. |
-| `https://github.com/Gam-Finance/gam-fi-cre-workflows/blob/main/src/valuation.ts` | **CRE / DON** | Uses `EVMClient` for log triggers, `HTTPClient` for AI Swarm queries, and `ConsensusAggregation` for result validation. |
-| `https://github.com/Gam-Finance/gam-fi-cre-workflows/blob/main/src/health-monitor.ts` | **CRE / DON** | Periodically scans `BorrowerSpoke` state to identify unhealthy vaults using automated triggers. |
-| `https://github.com/Gam-Finance/gam-fi-cre-workflows/blob/main/src/liquidator.ts` | **CRE / DON** | Generates and submits on-chain transactions to trigger liquidations via the `DutchAuction`. |
-| `https://github.com/Gam-Finance/gam-fi-cre-workflows/blob/main/src/event-resolution.ts` | **CRE / DON** | Resolves prediction market outcomes and settles collateral positions cross-chain. |
-| `https://github.com/Gam-Finance/gam-fi-cre-workflows/blob/main/secrets.yaml` | **Secrets Management** | Maps local environment variables to logical secret names for secure HMAC authentication. |
-| `https://github.com/Gam-Finance/contracts/blob/main/contracts/src/TokenPool.sol` | **CCIP** | Custom CCIP Token Pool logic for handling protocol-specific token transfers. |
+| `contracts/src/BorrowerSpoke.sol` | **CCIP** | Encodes and sends cross-chain `LoanRequest` messages and receives `LoanDisbursement`. |
+| `contracts/src/HubReceiver.sol` | **CCIP** | Inherits `CCIPReceiver` to process incoming loan requests and liquidity transfers. |
+| `contracts/src/LenderSpoke.sol` | **CCIP** | Transfers stablecoin liquidity from side-chains to the central `OmnichainLiquidityPool` on the Hub. |
+| `workflows/src/valuation.ts` | **CRE / DON** | Uses `EVMClient` for log triggers, `HTTPClient` for AI Swarm queries, and `ConsensusAggregation` for result validation. |
+| `workflows/src/health-monitor.ts` | **CRE / DON** | Periodically scans `BorrowerSpoke` state to identify unhealthy vaults using automated triggers. |
+| `workflows/src/liquidator.ts` | **CRE / DON** | Generates and submits on-chain transactions to trigger liquidations via the `DutchAuction`. |
+| `workflows/src/event-resolution.ts` | **CRE / DON** | Resolves prediction market outcomes and settles collateral positions cross-chain. |
+| `workflows/secrets.yaml` | **Secrets Management** | Maps local environment variables to logical secret names for secure HMAC authentication. |
+| `contracts/src/TokenPool.sol` | **CCIP** | Custom CCIP Token Pool logic for handling protocol-specific token transfers. |
+---
+
+## 4. Technical Deep Dives
+
+### A. Omnichain Loan Lifecycle (Sequence)
+The lifecycle involves three distinct phases: **Collateral Escrow**, **AI Valuation (CRE)**, and **Multi-Chain Disbursement (CCIP)**.
+
+```mermaid
+sequenceDiagram
+    participant U as User (Spoke Chain)
+    participant S as BorrowerSpoke
+    participant D as Multi-Node DON (CRE)
+    participant AS as AI Swarm (LangGraph)
+    participant H as HubReceiver (Hub Chain)
+    participant P as LiquidityPool
+
+    U->>S: depositCollateral(10k "YES" Shares)
+    S-->>D: Emit CollateralDeposited
+    D->>AS: HTTP POST /evaluate (HMAC Auth)
+    AS->>AS: Agent Consensus (News, Quant, Risk)
+    AS-->>D: Return Fair Market Value + Alpha
+    D->>D: Multi-Node Consensus Aggregation
+    D->>S: receiveValuation(FMV, HealthFactor)
+    D->>H: receiveLoanRequest(CCIP Message)
+    H->>P: requestLoan(USDC)
+    P->>U: Disburse USDC (via Spoke Bridge)
+```
+
+### B. Liquidation State Machine
+Vaults are monitored by the `health-monitor` workflow. If a vault's health factor ($HF$) drops below $1.0$, it enters the liquidation pipeline.
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING: Initial Deposit
+    PENDING --> ACTIVE: AI Valuation Applied
+    ACTIVE --> ACTIVE: Periodic Re-valuation
+    ACTIVE --> LIQUIDATING: HF < 1.0 (Oracle Drop)
+    ACTIVE --> LIQUIDATING: Market Resolution Cutoff
+    LIQUIDATING --> CLOSED: Auction Settled (Debt Paid)
+    CLOSED --> [*]
+```
+
+---
+
+## 5. Mathematical Risk Models
+
+### Health Factor ($HF$)
+The protocol ensures solvency by maintaining a minimum health factor. A vault is liquidatable if $HF < 1$.
+$$HF = \frac{(CollateralValue \times LiquidationThreshold)}{TotalLoanAmount}$$
+*Where `LiquidationThreshold` is defined by Governance (e.g., 85%).*
+
+### Dynamic Interest Rates
+The Hub utilizes a "Kinked" interest rate model to manage liquidity:
+- **Base Rate**: 2%
+- **Slope 1**: Up to 80% utilization
+- **Slope 2**: Aggressive increase above 80% to incentivize repayments.
+
+---
+
+## 6. CCIP Message Specification
+PBCM uses a standardized `CCIPMessageCodec` to ensure type-safety across different execution environments (WASM, EVM, Node).
+
+| Message Type | Payload Structure | Direction |
+| :--- | :--- | :--- |
+| **LoanRequest** | `(uint256 vaultId, address borrower, uint256 ltv, ...)` | Spoke → Hub |
+| **LoanRepayment** | `(uint256 vaultId, uint256 amountRepaid)` | Hub → Spoke |
+| **LiquidityTransfer** | `(address token, uint256 amount, uint64 destChain)` | Spoke ↔ Hub |
+
+---
+
+## 7. AI Swarm Architecture (LangGraph)
+The **AI Swarm** is a multi-agent intelligence layer that provides the "True Value" of prediction market assets. It uses a **Supervisor** pattern to coordinate specialized agents.
+
+```mermaid
+graph TD
+    S[Supervisor] --> |Task: Analyze Market| NA[News Agent]
+    S --> |Task: Current Sentiment| SA[Sentiment Agent]
+    S --> |Task: LTV & FMV| QA[Quant Agent]
+    S --> |Task: Risk Bounds| RA[Risk Agent]
+
+    NA --> |News Context| S
+    SA --> |Sentiment Score| S
+    QA --> |Alpha Pricing| S
+    RA --> |Max LTV| S
+
+    S --> |Aggregated Report| Server[AI Server API]
+    Server --> |Authenticated Response| DON[CRE DON]
+```
+
+### Agent Roles:
+- **News Agent**: Scrapes and summarizes real-world event data (e.g., election polls, sports news).
+- **Sentiment Agent**: Analyzes Twitter/X and social trends to quantify market "hype" or "panic".
+- **Quant Agent**: Uses a Black-Scholes variation for prediction markets to calculate fair market value.
+- **Risk Agent**: Evaluates liquidity depth and volatility to cap the maximum borrowable LTV.
+
+---
+
+## 8. CRE Workflow Execution Flow
+Chainlink CRE workflows act as the secure bridge. They execute in a **Trustless Runtime** where every step is validated by multiple nodes.
+
+```mermaid
+graph LR
+    subgraph "Trigger Phase"
+        T1[On-Chain Event] --> W[Workflow Entry]
+        T2[Time-Based cron] --> W
+    end
+
+    subgraph "Execution Phase (Multi-Node)"
+        W --> S[Secrets Decryption]
+        S --> H[HTTP Query to Swarm]
+        H --> V[Data Validation]
+    end
+
+    subgraph "Consensus Phase"
+        V --> C[Aggregation Median/Identical]
+        C --> Sig[DON Signature Generation]
+    end
+
+    Sig --> Dest[Destination Smart Contract]
+```
+
+### Security & Authentication
+- **HMAC SHA-256**: Every query to the AI Swarm is signed with a unique HMAC key managed by **Chainlink Secrets**.
+- **Execution Guard**: Workflows are restricted to specific contract addresses and function selectors via the `ACEPolicyManager`.
+- **WASM Isolation**: The CRE runtime executes workflows in a sandboxed WASM environment, preventing unauthorized system calls.
